@@ -11,9 +11,4 @@ interface StakingRewardsFactoryInterface {
         external
         view
         returns (address);
-
-    function getStakingToken(address underlying)
-        external
-        view
-        returns (address);
 }

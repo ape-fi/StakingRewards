@@ -20,14 +20,9 @@ describe('StakingRewardsFactory', async () => {
     user1Address = await user1.getAddress();
 
     const tokenFactory = await ethers.getContractFactory('MockToken');
-    const token1 = await tokenFactory.deploy();
-    const token2 = await tokenFactory.deploy();
-    const token3 = await tokenFactory.deploy();
-
-    const iTokenFactory = await ethers.getContractFactory('MockIToken');
-    stakingToken1 = await iTokenFactory.deploy(token1.address);
-    stakingToken2 = await iTokenFactory.deploy(token2.address);
-    stakingToken3 = await iTokenFactory.deploy(token3.address);
+    stakingToken1 = await tokenFactory.deploy();
+    stakingToken2 = await tokenFactory.deploy();
+    stakingToken3 = await tokenFactory.deploy();
 
     const stakingRewardsFactoryFactory = await ethers.getContractFactory('StakingRewardsFactory');
     stakingRewardsFactory = await stakingRewardsFactoryFactory.deploy();

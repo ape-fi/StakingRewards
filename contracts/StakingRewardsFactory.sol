@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./StakingRewards.sol";
-import "./interfaces/ITokenInterface.sol";
 import "./interfaces/StakingRewardsFactoryInterface.sol";
 
 contract StakingRewardsFactory is Ownable, StakingRewardsFactoryInterface {
@@ -15,9 +14,6 @@ contract StakingRewardsFactory is Ownable, StakingRewardsFactoryInterface {
 
     /// @notice The staking token - staking rewards contract mapping
     mapping(address => address) private _stakingRewardsMap;
-
-    /// @notice The underlying - staking token mapping
-    mapping(address => address) public _stakingTokenMap;
 
     /**
      * @notice Emitted when a staking rewards contract is deployed
@@ -67,19 +63,6 @@ contract StakingRewardsFactory is Ownable, StakingRewardsFactoryInterface {
     }
 
     /**
-     * @notice Return the staking token of a given underlying token
-     * @param underlying The underlying token
-     * @return The staking token
-     */
-    function getStakingToken(address underlying)
-        external
-        view
-        returns (address)
-    {
-        return _stakingTokenMap[underlying];
-    }
-
-    /**
      * @notice Create staking reward contracts.
      * @param stakingTokens The staking token list
      */
@@ -89,8 +72,6 @@ contract StakingRewardsFactory is Ownable, StakingRewardsFactoryInterface {
     ) external onlyOwner {
         for (uint256 i = 0; i < stakingTokens.length; i++) {
             address stakingToken = stakingTokens[i];
-            address underlying = ITokenInterface(stakingToken).underlying();
-            require(underlying != address(0), "invalid underlying");
             require(
                 _stakingRewardsMap[stakingToken] == address(0),
                 "staking rewards contract already exist"
@@ -105,7 +86,6 @@ contract StakingRewardsFactory is Ownable, StakingRewardsFactoryInterface {
 
             _stakingRewards.push(address(sr));
             _stakingRewardsMap[stakingToken] = address(sr);
-            _stakingTokenMap[underlying] = stakingToken;
             emit StakingRewardsCreated(address(sr), stakingToken);
         }
     }
@@ -115,8 +95,6 @@ contract StakingRewardsFactory is Ownable, StakingRewardsFactoryInterface {
      * @param stakingToken The staking token
      */
     function removeStakingRewards(address stakingToken) external onlyOwner {
-        address underlying = ITokenInterface(stakingToken).underlying();
-        require(underlying != address(0), "invalid underlying");
         require(
             _stakingRewardsMap[stakingToken] != address(0),
             "staking rewards contract not exist"
@@ -133,7 +111,6 @@ contract StakingRewardsFactory is Ownable, StakingRewardsFactoryInterface {
             }
         }
         _stakingRewardsMap[stakingToken] = address(0);
-        _stakingTokenMap[underlying] = address(0);
         emit StakingRewardsRemoved(stakingToken);
     }
 

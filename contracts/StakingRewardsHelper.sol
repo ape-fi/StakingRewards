@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./interfaces/ITokenInterface.sol";
 import "./interfaces/StakingRewardsInterface.sol";
 import "./interfaces/StakingRewardsFactoryInterface.sol";
 
@@ -47,8 +46,6 @@ contract StakingRewardsHelper is Ownable {
     struct StakingInfo {
         address stakingTokenAddress;
         uint256 totalSupply;
-        uint256 supplyRatePerBlock;
-        uint256 exchangeRate;
         RewardRate[] rewardRates;
     }
 
@@ -169,15 +166,9 @@ contract StakingRewardsHelper is Ownable {
                 .getStakingToken();
             uint256 totalSupply = StakingRewardsInterface(stakingRewards)
                 .totalSupply();
-            uint256 supplyRatePerBlock = ITokenInterface(stakingToken)
-                .supplyRatePerBlock();
-            uint256 exchangeRate = ITokenInterface(stakingToken)
-                .exchangeRateStored();
             stakingRewardRates[i] = StakingInfo({
                 stakingTokenAddress: stakingToken,
                 totalSupply: totalSupply,
-                supplyRatePerBlock: supplyRatePerBlock,
-                exchangeRate: exchangeRate,
                 rewardRates: rewardRates
             });
         }
@@ -185,83 +176,6 @@ contract StakingRewardsHelper is Ownable {
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
-
-    /**
-     * @notice Mint and stake tokens into staking rewards
-     * @param underlying The underlying token
-     * @param amount The amount
-     */
-    function stake(address underlying, uint256 amount) public {
-        require(amount > 0, "invalid amount");
-        address stakingToken = factory.getStakingToken(underlying);
-        require(stakingToken != address(0), "invalid staking token");
-        address stakingRewards = factory.getStakingRewards(stakingToken);
-        require(stakingRewards != address(0), "staking rewards not exist");
-
-        // Get funds from user.
-        IERC20(underlying).safeTransferFrom(msg.sender, address(this), amount);
-
-        // Mint
-        IERC20(underlying).approve(stakingToken, amount);
-        require(ITokenInterface(stakingToken).mint(amount) == 0, "mint failed");
-
-        // Stake to staking rewards.
-        uint256 balance = IERC20(stakingToken).balanceOf(address(this));
-        IERC20(stakingToken).approve(stakingRewards, balance);
-        StakingRewardsInterface(stakingRewards).stakeFor(msg.sender, balance);
-
-        assert(IERC20(stakingToken).balanceOf(address(this)) == 0);
-    }
-
-    /**
-     * @notice Unstake tokens from staking rewards and redeem
-     * @param stakingRewards The staking rewards
-     * @param amount The amount
-     */
-    function unstake(address stakingRewards, uint256 amount) public {
-        require(amount > 0, "invalid amount");
-        address stakingToken = StakingRewardsInterface(stakingRewards)
-            .getStakingToken();
-        require(stakingToken != address(0), "invalid staking token");
-        address underlying = ITokenInterface(stakingToken).underlying();
-        require(underlying != address(0), "invalid underlying");
-
-        // Withdraw from staking rewards.
-        StakingRewardsInterface(stakingRewards).withdrawFor(msg.sender, amount);
-
-        // Redeem
-        require(
-            ITokenInterface(stakingToken).redeem(amount) == 0,
-            "redeem failed"
-        );
-
-        // Send funds to user.
-        uint256 balance = IERC20(underlying).balanceOf(address(this));
-        IERC20(underlying).transfer(msg.sender, balance);
-
-        assert(IERC20(underlying).balanceOf(address(this)) == 0);
-    }
-
-    /**
-     * @notice Exit all staking rewards
-     */
-    function exitAll() public {
-        address[] memory allStakingRewards = factory.getAllStakingRewards();
-        exit(allStakingRewards);
-    }
-
-    /**
-     * @notice Exit staking rewards
-     * @param stakingRewards The list of staking rewards
-     */
-    function exit(address[] memory stakingRewards) public {
-        for (uint256 i = 0; i < stakingRewards.length; i++) {
-            uint256 balance = StakingRewardsInterface(stakingRewards[i])
-                .balanceOf(msg.sender);
-            unstake(stakingRewards[i], balance);
-            StakingRewardsInterface(stakingRewards[i]).getRewardFor(msg.sender);
-        }
-    }
 
     /**
      * @notice Claim all rewards
